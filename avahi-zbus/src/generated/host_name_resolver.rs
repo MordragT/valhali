@@ -19,7 +19,7 @@
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::{proxy, zvariant::Optional};
 
-use crate::{Interface, Protocol};
+use crate::{InterfaceIndex, Protocol};
 #[proxy(
     interface = "org.freedesktop.Avahi.HostNameResolver",
     default_service = "org.freedesktop.Avahi"
@@ -39,7 +39,7 @@ pub trait HostNameResolver {
     #[zbus(signal)]
     fn found(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
         aprotocol: Protocol,

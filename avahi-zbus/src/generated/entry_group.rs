@@ -19,7 +19,7 @@
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::{proxy, zvariant::Optional};
 
-use crate::{EntryGroupState, Interface, Protocol};
+use crate::{DnsClass, DnsType, EntryGroupState, InterfaceIndex, Protocol, Ttl};
 #[proxy(
     interface = "org.freedesktop.Avahi.EntryGroup",
     default_service = "org.freedesktop.Avahi"
@@ -28,7 +28,7 @@ pub trait EntryGroup {
     /// AddAddress method
     fn add_address(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         flags: u32,
         name: &str,
@@ -39,13 +39,13 @@ pub trait EntryGroup {
     #[allow(clippy::too_many_arguments)]
     fn add_record(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         flags: u32,
         name: &str,
-        clazz: u16,
-        type_: u16,
-        ttl: u32,
+        clazz: DnsClass,
+        type_: DnsType,
+        ttl: Ttl,
         rdata: &[u8],
     ) -> zbus::Result<()>;
 
@@ -53,7 +53,7 @@ pub trait EntryGroup {
     #[allow(clippy::too_many_arguments)]
     fn add_service(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         flags: u32,
         name: &str,
@@ -68,7 +68,7 @@ pub trait EntryGroup {
     #[allow(clippy::too_many_arguments)]
     fn add_service_subtype(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         flags: u32,
         name: &str,
@@ -96,7 +96,7 @@ pub trait EntryGroup {
     #[allow(clippy::too_many_arguments)]
     fn update_service_txt(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         flags: u32,
         name: &str,
@@ -107,5 +107,5 @@ pub trait EntryGroup {
 
     /// StateChanged signal
     #[zbus(signal)]
-    fn state_changed(&self, state: i32, error: &str) -> zbus::Result<()>;
+    fn state_changed(&self, state: EntryGroupState, error: &str) -> zbus::Result<()>;
 }

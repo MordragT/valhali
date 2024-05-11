@@ -19,7 +19,7 @@
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::{proxy, zvariant::Optional};
 
-use crate::{Interface, Protocol};
+use crate::{InterfaceIndex, Protocol};
 #[proxy(
     interface = "org.freedesktop.Avahi.ServiceTypeBrowser",
     default_service = "org.freedesktop.Avahi"
@@ -47,7 +47,7 @@ pub trait ServiceTypeBrowser {
     #[zbus(signal)]
     fn item_new(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         type_: &str,
         domain: &str,
@@ -58,7 +58,7 @@ pub trait ServiceTypeBrowser {
     #[zbus(signal)]
     fn item_remove(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         type_: &str,
         domain: &str,

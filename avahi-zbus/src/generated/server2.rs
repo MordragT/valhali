@@ -19,7 +19,10 @@
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::{proxy, zvariant::Optional};
 
-use crate::{Interface, Protocol};
+use crate::{
+    DnsClass, DnsType, DomainBrowserType, InterfaceIndex, Protocol, ResolveAddressResponse,
+    ResolveHostNameResponse, ResolveServiceResponse, ServerState,
+};
 #[proxy(
     interface = "org.freedesktop.Avahi.Server2",
     default_service = "org.freedesktop.Avahi",
@@ -29,7 +32,7 @@ pub trait Server2 {
     /// AddressResolverPrepare method
     fn address_resolver_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         address: &str,
         flags: u32,
@@ -38,10 +41,10 @@ pub trait Server2 {
     /// DomainBrowserPrepare method
     fn domain_browser_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         domain: &str,
-        btype: i32,
+        btype: DomainBrowserType,
         flags: u32,
     ) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 
@@ -50,7 +53,7 @@ pub trait Server2 {
 
     /// GetAPIVersion method
     #[zbus(name = "GetAPIVersion")]
-    fn get_apiversion(&self) -> zbus::Result<u32>;
+    fn get_api_version(&self) -> zbus::Result<u32>;
 
     /// GetAlternativeHostName method
     fn get_alternative_host_name(&self, name: &str) -> zbus::Result<String>;
@@ -71,13 +74,13 @@ pub trait Server2 {
     fn get_local_service_cookie(&self) -> zbus::Result<u32>;
 
     /// GetNetworkInterfaceIndexByName method
-    fn get_network_interface_index_by_name(&self, name: &str) -> zbus::Result<i32>;
+    fn get_network_interface_index_by_name(&self, name: &str) -> zbus::Result<InterfaceIndex>;
 
     /// GetNetworkInterfaceNameByIndex method
-    fn get_network_interface_name_by_index(&self, index: i32) -> zbus::Result<String>;
+    fn get_network_interface_name_by_index(&self, index: InterfaceIndex) -> zbus::Result<String>;
 
     /// GetState method
-    fn get_state(&self) -> zbus::Result<i32>;
+    fn get_state(&self) -> zbus::Result<ServerState>;
 
     /// GetVersionString method
     fn get_version_string(&self) -> zbus::Result<String>;
@@ -85,7 +88,7 @@ pub trait Server2 {
     /// HostNameResolverPrepare method
     fn host_name_resolver_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
         aprotocol: Protocol,
@@ -100,11 +103,11 @@ pub trait Server2 {
     #[allow(clippy::too_many_arguments)]
     fn record_browser_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
-        clazz: u16,
-        type_: u16,
+        clazz: DnsClass,
+        type_: DnsType,
         flags: u32,
     ) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 
@@ -112,52 +115,40 @@ pub trait Server2 {
     #[allow(clippy::too_many_arguments)]
     fn resolve_address(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         address: &str,
         flags: u32,
-    ) -> zbus::Result<(i32, i32, i32, String, String, u32)>;
+    ) -> zbus::Result<ResolveAddressResponse>;
 
     /// ResolveHostName method
     #[allow(clippy::too_many_arguments)]
     fn resolve_host_name(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
         aprotocol: Protocol,
         flags: u32,
-    ) -> zbus::Result<(i32, i32, String, i32, String, u32)>;
+    ) -> zbus::Result<ResolveHostNameResponse>;
 
     /// ResolveService method
     #[allow(clippy::too_many_arguments)]
     fn resolve_service(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
         type_: &str,
         domain: &str,
         aprotocol: Protocol,
         flags: u32,
-    ) -> zbus::Result<(
-        i32,
-        i32,
-        String,
-        String,
-        String,
-        String,
-        i32,
-        String,
-        u16,
-        Vec<Vec<u8>>,
-        u32,
-    )>;
+    ) -> zbus::Result<ResolveServiceResponse>;
 
     /// ServiceBrowserPrepare method
     fn service_browser_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         type_: &str,
         domain: &str,
@@ -168,7 +159,7 @@ pub trait Server2 {
     #[allow(clippy::too_many_arguments)]
     fn service_resolver_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
         type_: &str,
@@ -180,7 +171,7 @@ pub trait Server2 {
     /// ServiceTypeBrowserPrepare method
     fn service_type_browser_prepare(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         domain: &str,
         flags: u32,
@@ -191,5 +182,5 @@ pub trait Server2 {
 
     /// StateChanged signal
     #[zbus(signal)]
-    fn state_changed(&self, state: i32, error: &str) -> zbus::Result<()>;
+    fn state_changed(&self, state: ServerState, error: &str) -> zbus::Result<()>;
 }

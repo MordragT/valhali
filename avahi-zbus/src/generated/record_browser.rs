@@ -19,7 +19,7 @@
 //! [D-Bus standard interfaces]: https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces,
 use zbus::{proxy, zvariant::Optional};
 
-use crate::{Interface, Protocol};
+use crate::{DnsClass, DnsType, InterfaceIndex, Protocol};
 #[proxy(
     interface = "org.freedesktop.Avahi.RecordBrowser",
     default_service = "org.freedesktop.Avahi"
@@ -47,11 +47,11 @@ pub trait RecordBrowser {
     #[zbus(signal)]
     fn item_new(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
-        clazz: u16,
-        type_: u16,
+        clazz: DnsClass,
+        type_: DnsType,
         rdata: Vec<u8>,
         flags: u32,
     ) -> zbus::Result<()>;
@@ -60,11 +60,11 @@ pub trait RecordBrowser {
     #[zbus(signal)]
     fn item_remove(
         &self,
-        interface: Optional<Interface>,
+        interface: Optional<InterfaceIndex>,
         protocol: Protocol,
         name: &str,
-        clazz: u16,
-        type_: u16,
+        clazz: DnsClass,
+        type_: DnsType,
         rdata: Vec<u8>,
         flags: u32,
     ) -> zbus::Result<()>;

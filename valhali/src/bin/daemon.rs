@@ -1,8 +1,9 @@
-use avahi_zbus::{DnsType, EntryGroupProxy, Protocol, ServerProxy, DNS_CLASS_IN};
+use avahi_zbus::{DnsClass, DnsType, EntryGroupProxy, Protocol, ServerProxy, Ttl};
 use clap::Parser;
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use tokio::time;
 use tracing::{debug, info};
+use valhali::rdata::{Cname, RecordData};
 use zbus::{zvariant::Optional, Connection};
 
 #[derive(Parser)]
@@ -11,8 +12,6 @@ struct App {
 }
 
 pub const PERIOD: Duration = Duration::from_secs(2);
-
-mod encode;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -28,9 +27,8 @@ async fn main() -> Result<(), Error> {
     let server = ServerProxy::new(&connection).await?;
     info!("Established connection to avahi dbus");
 
-    let fqdn = server.get_host_name_fqdn().await?;
-    let rdata = encode::encode_rdata(&fqdn);
-    info!("Starting publishing of cnames for `{fqdn}`");
+    let cname = Cname::from_str(&server.get_host_name_fqdn().await?)?;
+    info!("Starting publishing of aliases for `{cname}`");
 
     let mut interval = time::interval(PERIOD);
 
@@ -44,16 +42,16 @@ async fn main() -> Result<(), Error> {
                 Protocol::Unspec,
                 0,
                 "vault.local",
-                DNS_CLASS_IN,
+                DnsClass::IN,
                 DnsType::CNAME,
-                60,
-                rdata.as_slice(),
+                Ttl::MINUTE,
+                cname.as_rdata(),
             )
             .await?;
         group.commit().await?;
 
         let state = group.get_state().await?;
-        debug!("{state:?} cname record: `vault.local`");
+        debug!("{state:?} alias: `vault.local`");
 
         interval.tick().await;
     }
