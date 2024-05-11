@@ -1,17 +1,21 @@
-use avahi_zbus::{DnsClass, DnsType, EntryGroupProxy, Protocol, ServerProxy, Ttl};
+use avahi_zbus::{EntryGroupProxy, EntryGroupState, ServerProxy, ServerState, Ttl};
 use clap::Parser;
-use std::{path::PathBuf, str::FromStr, time::Duration};
-use tokio::time;
-use tracing::{debug, info};
-use valhali::rdata::{Cname, RecordData};
-use zbus::{zvariant::Optional, Connection};
+use std::{path::PathBuf, str::FromStr};
+use tokio::{
+    io,
+    signal::unix::{signal, SignalKind},
+};
+use tracing::{debug, error, info, warn};
+use valhali::{
+    entry_group_add_record, entry_group_event_handler, name::NameBuf, rdata::Cname,
+    server_event_handler,
+};
+use zbus::Connection;
 
 #[derive(Parser)]
 struct App {
     config: PathBuf,
 }
-
-pub const PERIOD: Duration = Duration::from_secs(2);
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -27,32 +31,57 @@ async fn main() -> Result<(), Error> {
     let server = ServerProxy::new(&connection).await?;
     info!("Established connection to avahi dbus");
 
+    server_event_handler(&server, |state, error| match state {
+        ServerState::Failure | ServerState::Invalid => error!("{state:?}: {error}"),
+        ServerState::Collision => warn!("{state:?}: {error}"),
+        ServerState::Registering | ServerState::Running => info!("{state:?}: {error}"),
+    })
+    .await?;
+    info!("Created server signals handler");
+
+    let group_path = server.entry_group_new().await?;
+    let group = EntryGroupProxy::new(&connection, group_path).await?;
+    info!("Created new entry group");
+
+    entry_group_event_handler(&group, |state, error| match state {
+        EntryGroupState::Failure => error!("{state:?}: {error}"),
+        EntryGroupState::Collision => warn!("{state:?}: {error}"),
+        EntryGroupState::Established
+        | EntryGroupState::Registering
+        | EntryGroupState::Uncommitted => info!("{state:?}: {error}"),
+    })
+    .await?;
+    info!("Created group signals handler");
+
     let cname = Cname::from_str(&server.get_host_name_fqdn().await?)?;
-    info!("Starting publishing of aliases for `{cname}`");
+    entry_group_add_record(
+        &group,
+        &NameBuf::from_str("vault.local").unwrap(),
+        Ttl::MINUTE,
+        cname,
+    )
+    .await?;
+    group.commit().await?;
+    info!("Committed entry group");
 
-    let mut interval = time::interval(PERIOD);
+    wait_for_shutdown().await?;
+    info!("Shutting down");
 
-    loop {
-        let group_path = server.entry_group_new().await?;
-        let group = EntryGroupProxy::new(&connection, group_path).await?;
+    group.free().await?;
 
-        group
-            .add_record(
-                Optional::default(),
-                Protocol::Unspec,
-                0,
-                "vault.local",
-                DnsClass::IN,
-                DnsType::CNAME,
-                Ttl::MINUTE,
-                cname.as_rdata(),
-            )
-            .await?;
-        group.commit().await?;
+    Ok(())
+}
 
-        let state = group.get_state().await?;
-        debug!("{state:?} alias: `vault.local`");
+async fn wait_for_shutdown() -> io::Result<()> {
+    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigquit = signal(SignalKind::quit())?;
 
-        interval.tick().await;
+    tokio::select! {
+        _ = sigint.recv() => debug!("Received SIGINT"),
+        _ = sigterm.recv() => debug!("Received SIGTERM"),
+        _ = sigquit.recv() => debug!("Received SIGQUIT"),
     }
+
+    Ok(())
 }

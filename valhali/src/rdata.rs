@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{ops::Deref, str::FromStr};
+use std::str::FromStr;
 
 use avahi_zbus::DnsType;
 

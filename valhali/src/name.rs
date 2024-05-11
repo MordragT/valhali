@@ -165,3 +165,21 @@ impl fmt::Display for NameBuf {
         self.as_ref().fmt(f)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::NameBuf;
+
+    #[test]
+    fn name() {
+        let domain = "a.local";
+        let name = NameBuf::from_str(domain).unwrap();
+
+        assert_eq!(
+            name.as_slice(),
+            &[1, b'a', 5, b'l', b'o', b'c', b'a', b'l', 0]
+        )
+    }
+}

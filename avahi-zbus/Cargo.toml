@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 zbus = "4.2"
 serde = "1"
+serde_repr = "0.1"

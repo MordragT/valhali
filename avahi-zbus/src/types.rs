@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use zbus::zvariant::{NoneValue, Optional, Type};
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(i32)]
 pub enum Protocol {
@@ -32,7 +35,7 @@ impl From<i32> for InterfaceIndex {
 }
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(i32)]
 pub enum ServerState {
@@ -44,7 +47,7 @@ pub enum ServerState {
 }
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(i32)]
 pub enum EntryGroupState {
@@ -110,7 +113,7 @@ impl LookupResultFlags {
 // }
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(i32)]
 pub enum DomainBrowserType {
@@ -122,11 +125,8 @@ pub enum DomainBrowserType {
     Max,
 }
 
-pub const DEFAULT_TTL_HOST_NAME: i32 = 120;
-pub const DEFAULT_TTL: i32 = 75 * 60;
-
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(u16)]
 pub enum DnsClass {
@@ -136,7 +136,7 @@ pub enum DnsClass {
 }
 
 #[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize, Serialize, Hash,
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Type, Deserialize_repr, Serialize_repr, Hash,
 )]
 #[repr(u16)]
 pub enum DnsType {
@@ -187,7 +187,7 @@ pub struct ResolveServiceResponse {
     pub flags: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Type, Deserialize, Serialize, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Type, Deserialize, Serialize, Hash)]
 pub struct Ttl(u32);
 
 const SECS_PER_MINUTE: u32 = 60;
@@ -195,6 +195,10 @@ const SECS_PER_HOUR: u32 = 3600;
 const SECS_PER_DAY: u32 = 86400;
 
 impl Ttl {
+    pub const DEFAULT: Ttl = Ttl::from_mins(75);
+
+    pub const DEFAULT_HOST_NAME: Ttl = Ttl::from_mins(2);
+
     /// A time-to-live of one second.
     pub const SECOND: Ttl = Ttl::from_secs(1);
 
@@ -284,5 +288,12 @@ impl Ttl {
     pub const fn from_days(days: u16) -> Self {
         assert!(days <= 49710);
         Self(days as u32 * SECS_PER_DAY)
+    }
+
+    /// Converts a `Ttl` into a [`std::time::Duration`].
+    #[must_use]
+    #[inline]
+    pub const fn into_duration(&self) -> Duration {
+        Duration::from_secs(self.0 as u64)
     }
 }
