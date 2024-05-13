@@ -1,3 +1,4 @@
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{
     fmt,
     ops::Deref,
@@ -111,7 +112,9 @@ impl fmt::Display for Name {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, SerializeDisplay, DeserializeFromStr,
+)]
 pub struct NameBuf(Vec<u8>);
 
 impl NameBuf {

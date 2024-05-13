@@ -1,35 +1,35 @@
 <div align=center>
 
-# ❄️ nix-template-rust-stable 🦀
+# ❄️ Valhali 🦀
 
 [![NixOS](https://img.shields.io/badge/Made_for-Rust-orange.svg?logo=rust&style=for-the-badge)](https://www.rust-lang.org/) [![NixOS](https://img.shields.io/badge/Flakes-Nix-informational.svg?logo=nixos&style=for-the-badge)](https://nixos.org) ![License](https://img.shields.io/github/license/mordragt/nix-templates?style=for-the-badge)
 
-Minimal **Rust** development template for **Nix**
+Simple Tokio Service to publish MDNS services and domain aliases
 
 </div>
 
 ## About
 
-This is a minimal template for Rust development on the stable channel. 
+This is a simple tokio service which will watch for config file changes,
+and publish services and aliases by sending the requests to avahi via dbus.
 
-## Initialization
+## Usage - Nixos
 
-See the parent README for further instructions, but you can initialize this template
-with the following command in your current directory.
+Use the provided nixos module defined in `flake.nix`
+
+## Usage - Linux WIP
+
+At the moment you have to create your own service file for e.g. systemd.
+First install the valhali daemon and then use the following exec:
 
 ```bash
-nix flake init -t github:MordragT/nix-templates#rust-stable
+valhalid /etc/valhali/config.toml
 ```
 
-## Usage
-
-- `nix develop`: opens up a `bash` shell with the bare minimum Rust toolset (`cargo` & `rustc`) by default
-- `nix build` : builds the Rust project. Outputs the binary to `./result/bin/<name>`
-- `nix run`: runs the Rust program.
+You can look at the provided config under `etc/valhali/config.toml` to see how services and aliases can be defined
 
 
 ## Reference
 
 1. [wiki/Flakes](https://nixos.wiki/wiki/Flakes)
-2. [Fenix](https://github.com/nix-community/fenix) - used for managing Rust toolchains (read the `makeRustPlatform` example)
-3. [rust-section of language frameworks](https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/rust.section.md#cargo-features-cargo-features) - optional (use it for extending the template)
+2. [Avahi](https://avahi.org/)

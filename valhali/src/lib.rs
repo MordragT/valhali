@@ -6,11 +6,15 @@ use avahi_zbus::{
 };
 use name::Name;
 use rdata::RecordData;
+use record::Record;
+use service::Service;
 use tokio::{task::JoinHandle, time};
 use zbus::{export::futures_util::StreamExt, zvariant::Optional};
 
 pub mod name;
 pub mod rdata;
+pub mod record;
+pub mod service;
 pub mod status;
 
 pub async fn entry_group_event_handler(
@@ -36,9 +40,7 @@ pub async fn entry_group_event_handler(
 
 pub async fn entry_group_add_record<D>(
     group: &EntryGroupProxy<'_>,
-    name: &Name,
-    ttl: Ttl,
-    data: &D,
+    record: &Record<D>,
 ) -> Result<(), zbus::Error>
 where
     D: RecordData,
@@ -48,13 +50,52 @@ where
             Optional::default(),
             Protocol::Unspec,
             0,
-            &name.to_string(),
+            &record.name.to_string(),
             DnsClass::IN,
             D::KIND,
-            ttl,
-            data.as_rdata(),
+            record.ttl,
+            record.data.as_rdata(),
         )
         .await
+}
+
+pub async fn entry_group_add_service(
+    group: &EntryGroupProxy<'_>,
+    service: &Service,
+) -> Result<(), zbus::Error> {
+    let ty = format!("_{}._{}", service.kinds[0].as_str(), service.protocol);
+
+    group
+        .add_service(
+            Optional::default(),
+            Protocol::Unspec,
+            0,
+            &service.name,
+            &ty,
+            "",
+            "",
+            service.port,
+            &[],
+        )
+        .await?;
+
+    for sub_kind in &service.kinds[1..] {
+        let sub_ty = format!("_{sub_kind}");
+
+        group
+            .add_service_subtype(
+                Optional::default(),
+                Protocol::Unspec,
+                0,
+                &service.name,
+                &ty,
+                "",
+                &sub_ty,
+            )
+            .await?;
+    }
+
+    Ok(())
 }
 
 pub async fn server_event_handler(

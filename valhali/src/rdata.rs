@@ -2,6 +2,7 @@ use core::fmt;
 use std::str::FromStr;
 
 use avahi_zbus::DnsType;
+use serde::{Deserialize, Serialize};
 
 use crate::name::{Name, NameBuf, NameError};
 
@@ -11,7 +12,7 @@ pub trait RecordData {
     fn as_rdata(&self) -> &[u8];
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Cname(NameBuf);
 
 impl Cname {
@@ -43,6 +44,14 @@ impl fmt::Display for Cname {
 }
 
 impl RecordData for Cname {
+    const KIND: DnsType = DnsType::CNAME;
+
+    fn as_rdata(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+impl RecordData for &Cname {
     const KIND: DnsType = DnsType::CNAME;
 
     fn as_rdata(&self) -> &[u8] {

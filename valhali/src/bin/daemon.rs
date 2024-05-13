@@ -2,6 +2,7 @@ use avahi_zbus::{EntryGroupProxy, EntryGroupState, ServerProxy, ServerState, Ttl
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     str::FromStr,
     time::Duration,
@@ -15,8 +16,12 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 use valhali::{
-    entry_group_add_record, entry_group_event_handler, name::NameBuf, rdata::Cname,
+    entry_group_add_record, entry_group_add_service, entry_group_event_handler,
+    name::NameBuf,
+    rdata::Cname,
+    record::Record,
     server_event_handler, server_resolve_name,
+    service::{Service, ServiceKind, TransportProtocol},
 };
 use zbus::Connection;
 
@@ -25,9 +30,10 @@ struct App {
     config: PathBuf,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Config {
-    aliases: Vec<String>,
+    aliases: Vec<NameBuf>,
+    services: HashMap<String, ServiceConfig>,
 }
 
 impl Config {
@@ -36,6 +42,14 @@ impl Config {
         let config = toml::from_str(&contents)?;
         Ok(config)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+struct ServiceConfig {
+    alias: Option<NameBuf>,
+    kind: ServiceKind,
+    protocol: TransportProtocol,
+    port: u16,
 }
 
 #[derive(Debug, Error)]
@@ -119,7 +133,7 @@ async fn main() -> Result<(), Error> {
             _ = rx.changed() => {
                 group.reset().await?;
                 let config = rx.borrow_and_update();
-                add_config(&server, &group, &config, &cname).await?;
+                add_config(&server, &group, config.clone(), &cname).await?;
 
                 if !group.is_empty().await? {
                     group.commit().await?;
@@ -149,26 +163,52 @@ async fn wait_for_shutdown() -> io::Result<()> {
 async fn add_config(
     server: &ServerProxy<'_>,
     group: &EntryGroupProxy<'_>,
-    config: &Config,
+    Config { aliases, services }: Config,
     cname: &Cname,
 ) -> Result<(), zbus::Error> {
-    for alias in &config.aliases {
-        match NameBuf::from_str(alias) {
-            Ok(name) => {
-                if let Some(response) = server_resolve_name(server, &name).await {
-                    let owner = response.name;
-                    if owner != cname.to_string() {
-                        error!("Entry {alias} already owned by {owner}")
-                    } else {
-                        info!("Entry {alias} already published")
-                    }
-                } else {
-                    entry_group_add_record(group, &name, Ttl::MINUTE, cname).await?;
-                    info!("Entry {alias} published");
-                }
-            }
-            Err(e) => error!("Alias: {e}"),
+    for alias in aliases {
+        add_alias(server, group, alias, cname).await?;
+    }
+
+    for (
+        name,
+        ServiceConfig {
+            alias,
+            kind,
+            protocol,
+            port,
+        },
+    ) in services
+    {
+        if let Some(alias) = alias {
+            add_alias(server, group, alias, cname).await?;
         }
+
+        let service = Service::new(name, kind, protocol, port);
+        entry_group_add_service(group, &service).await?;
+        info!("Published Service: {service}")
+    }
+
+    Ok(())
+}
+
+async fn add_alias(
+    server: &ServerProxy<'_>,
+    group: &EntryGroupProxy<'_>,
+    alias: NameBuf,
+    cname: &Cname,
+) -> Result<(), zbus::Error> {
+    if let Some(response) = server_resolve_name(server, &alias).await {
+        let owner = response.name;
+        if owner != cname.to_string() {
+            error!("Entry {alias} already owned by {owner}")
+        } else {
+            info!("Entry {alias} already published")
+        }
+    } else {
+        let record = Record::new(alias, Ttl::MINUTE, cname);
+        entry_group_add_record(group, &record).await?;
+        info!("Published Entry: {}", record.name);
     }
 
     Ok(())

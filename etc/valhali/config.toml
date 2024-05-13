@@ -1,1 +1,4 @@
-aliases = ["vault.local", "git.local"]
+aliases = ["git.local"]
+
+[services]
+vaultwarden = { alias = "vault.local", kind = "https", protocol = "tcp", port = 443 }
