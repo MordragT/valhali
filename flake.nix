@@ -101,7 +101,9 @@
 
         config = lib.mkIf cfg.enable {
           environment.etc."valhali/config.toml".source = (pkgs.formats.toml {}).generate "config.toml" {
-            inherit (cfg) aliases services;
+            inherit (cfg) aliases;
+
+            services = lib.filterAttrsRecursive (n: v: v != null) cfg.services;
           };
 
           services.avahi.enable = true;
